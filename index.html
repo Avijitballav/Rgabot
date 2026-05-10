@@ -677,6 +677,11 @@ async function goToWhatsApp() {
   document.getElementById("successBox").style.display = 'none';
  
   window.close();
+
+  // fallback
+  setTimeout(() => {
+    window.location.href = "thankyou.html";
+}, 100);
 }
 </script>
 
