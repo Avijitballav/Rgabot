@@ -1,0 +1,701 @@
+<!-- <<<<<<<<<<<<<<<<<<<<<<<<<<<<<< STATIC P1 Start >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> -->
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="initial-scale=1, maximum-scale=1, user-scalable=no"
+    />
+    <title>Center on User Location | ArcGIS Maps SDK</title>
+    <link
+      rel="stylesheet"
+      href="https://js.arcgis.com/4.31/esri/themes/light/main.css"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+    />
+
+    <style>
+      html,
+      body,
+      #viewDiv {
+        padding: 0;
+        margin: 0;
+        height: 100%;
+        width: 100%;
+        position: absolute; /* Ensure absolute positioning */
+        overflow: hidden;
+      }
+
+      body {
+        position: relative;
+      }
+
+      #viewDiv {
+        border-radius: 30px;
+        background-color: #eff4f7;
+      }
+
+      .esri-view {
+        --esri-view-outline: none;
+      }
+
+      .esri-attribution {
+        display: none;
+      }
+
+      /* Style the Search widget container */
+      .esri-search {
+        width: 100%; /* Take most of the width */
+        max-width: 700px; /* Limit max width on larger screens */
+        margin: 2px auto; /* Center the widget at the top */
+        border-radius: 40px;
+        background-color: rgba(255, 255, 255, 0.7);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        padding: 10px;
+      }
+
+      /* Style the search input box */
+      .esri-input {
+        background-color: transparent;
+        border: none;
+        font-size: 16px;
+        padding: 25px 20px; /* Increase padding for more height */
+        color: #333;
+      }
+
+      .esri-input:focus {
+        border: none;
+        outline: none;
+      }
+
+      /* Change placeholder text color */
+      .esri-input::placeholder {
+        color: #888;
+        opacity: 1;
+      }
+
+      /* Style the search icon button */
+      .esri-search__submit-button .esri-icon-search {
+        display: none;
+      }
+
+      .esri-search__submit-button {
+        background-color: transparent !important;
+        color: #5674ab;
+        position: absolute;
+        right: 3px;
+        top: 50%;
+        transform: translateY(-50%);
+        z-index: 2;
+        font-size: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: none;
+      }
+
+      .esri-search__submit-button:focus,
+      .esri-search__submit-button:active {
+        background-color: transpatent !important;
+      }
+
+      /* Use a pin icon (Unicode) */
+      .esri-search__submit-button::before {
+        content: "\f3c5";
+        font-family: "Font Awesome 6 Free";
+        font-weight: 900;
+        color: #3e7761;
+        font-size: 22px;
+      }
+
+      /* Optionally, change hover color */
+      .esri-search__submit-button:hover::before {
+        background-color: transparent;
+      }
+
+      /* Style the clear button */
+      .esri-search__clear-button {
+        color: #5674ab;
+        background-color: transparent;
+        position: absolute;
+        right: 25px;
+        top: 50%;
+        transform: translateY(-50%);
+        z-index: 2;
+      }
+
+      /* Adjust dropdown suggestions */
+      .esri-search__suggestions-menu {
+        border-radius: 15px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+      }
+
+      /* Adjust focus outline */
+      .esri-search:focus-within {
+        border: none;
+        box-shadow: 0 0 8px rgba(86, 116, 171, 0.4);
+      }
+      .esri-ui-top-left .esri-component.esri-locate,
+      .esri-ui-top-left .esri-component.esri-home,
+      .esri-ui-top-left .esri-component.esri-zoom {
+        background-color: transparent;
+        box-shadow: none;
+        border: none;
+      }
+
+      .esri-ui-top-left .esri-widget .esri-widget--button {
+        width: 50px;
+        height: 50px;
+        background-color: white;
+        border: 2px solid #ccc;
+        border-radius: 50%;
+        font-size: 24px;
+        --calcite-icon-color: #3e7761;
+        font-weight: bold;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        cursor: pointer;
+        transition: transform 0.2s, box-shadow 0.2s;
+        margin-top: 5px;
+      }
+
+      .esri-ui-top-left .esri-zoom {
+        margin-top: 50px;
+      }
+
+      .esri-ui-top-left {
+        top: 80px;
+      }
+
+      /* remove outlined border on focus */
+
+      .esri-shadow-cast__time-range
+        .esri-slider.esri-slider--horizontal
+        .esri-slider__anchor:focus
+        .esri-slider__thumb {
+        outline-offset: 2px;
+        outline: 2px solid red;
+        overflow: visible;
+      }
+    </style>
+    <script src="https://js.arcgis.com/4.31/"></script>
+  </head>
+  <body>
+    <div id="viewDiv"></div>
+    <!-- Confirm Location Button (below Search Widget) -->
+<button id="confirmLocationBtn" 
+        style="position: absolute; top: 80px; right: 20px; z-index: 9999; padding: 12px 20px; 
+               background-color: #3e7761; color: #fff; border: none; border-radius: 8px; 
+               cursor: pointer; font-size: 16px;">
+              
+</button>
+
+<!-- Confirmation Dialog -->
+<div id="confirmDialog" 
+     style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+            background-color: rgba(0,0,0,0.5); z-index: 10000; justify-content: center; align-items: center;">
+  <div style="background: #fff; padding: 30px; border-radius: 12px; max-width: 400px; text-align: center; box-shadow: 0 4px 12px rgba(0,0,0,0.3);">
+    <p style="font-size: 18px; margin-bottom: 20px;" id="confirmText"></p>
+    <button id="yesBtn" style="margin-right: 15px; padding: 10px 20px; background-color: #3e7761; color: white; border: none; border-radius: 6px; cursor: pointer;"></button>
+    <button id="noBtn" style="padding: 10px 20px; background-color: #ccc; color: #333; border: none; border-radius: 6px; cursor: pointer;"></button>
+  </div>
+</div>
+<!-- successfully Dialog -->
+<div id="successBox" 
+    style="display:none; position:fixed; top:0; left:0; width:100%; height:100%;
+           background:rgba(0,0,0,0.5); z-index:99999; justify-content:center; align-items:center;">
+ <div style="background:#fff; padding:25px; border-radius:10px; text-align:center;">
+  <p id="successText"></p>
+   <button onclick="goToWhatsApp()" 
+           style="padding:10px 20px; background:#3e7761; color:#fff; border:none; border-radius:6px;" id="okBtn">
+          
+   </button>
+ </div>
+</div>
+    <script>
+
+
+      /* ================= LANGUAGE SETUP ================= */
+
+const urlParams = new URLSearchParams(window.location.search);
+const lang = urlParams.get("lang") || "en";
+console.log("lang:", lang);
+const TEXT = {
+  en: {
+    confirmBtn: "Confirm Location",
+    confirmMsg: "Do you want to set this location?",
+    yes: "Yes",
+    no: "No",
+    success: "Location sent successfully!\nPlease go back to your chat window.",
+    ok: "OK"
+  },
+  ar: {
+    confirmBtn: "تأكيد الموقع",
+    confirmMsg: "هل تريد تحديد هذا الموقع؟",
+    yes: "نعم",
+    no: "لا",
+    success: "تم إرسال الموقع بنجاح!\nالرجاء العودة إلى المحادثة.",
+    ok: "حسناً"
+  }
+};
+
+// Apply language
+const t = TEXT[lang] || TEXT.en;
+
+document.getElementById("confirmLocationBtn").innerText = t.confirmBtn;
+document.getElementById("confirmText").innerText = t.confirmMsg;
+document.getElementById("yesBtn").innerText = t.yes;
+document.getElementById("noBtn").innerText = t.no;
+document.getElementById("successText").innerText = t.success;
+document.getElementById("okBtn").innerText = t.ok;
+
+// RTL support
+if (lang === "ar") {
+  document.body.style.direction = "rtl";
+}
+     let reportingJSON = {};
+      require([
+        "esri/Map",
+        "esri/views/MapView",
+        "esri/Viewpoint",
+        "esri/layers/VectorTileLayer",
+        "esri/widgets/Locate",
+        "esri/widgets/Home",
+        "esri/widgets/Zoom",
+        "esri/Graphic",
+        "esri/layers/GraphicsLayer",
+        "esri/widgets/Search",
+        "esri/geometry/geometryEngine",
+        "esri/intl",
+        "esri/geometry/Point",
+        "esri/geometry/projection",
+        "esri/geometry/SpatialReference",
+      ], (
+        Map,
+        MapView,
+        Viewpoint,
+        VectorTileLayer,
+        Locate,
+        Home,
+        Zoom,
+        Graphic,
+        GraphicsLayer,
+        Search,
+        geometryEngine,
+        intl,
+        Point,
+        projection,
+        SpatialReference
+      ) => {
+
+
+        // Map settings
+        intl.setLocale(lang);
+
+        const mapHome = [45, 25];
+        const homeZoom = 5;
+
+        const basemapTile =
+          "https://cdn.arcgis.com/sharing/rest/content/items/85a8b57c74724a27b27b6ee5858e03cf/resources/styles/root.json?f=json";
+
+        // Point Data
+        const pointGeometryType = "esriGeometryPoint";
+        const pointSpatialRelationship = "esriSpatialRelIntersects";
+        const pointTolerance = 10;
+        const pointReturnGeometry = false;
+
+        // Data to be sent to Mendix
+        let geometryJSON = undefined;
+        let locationJSON = {};
+       
+
+        // Query Data
+        const viewDPI = 96;
+
+        // Buffer Data
+        const bufferValue = 100;
+        const bufferUnit = "meters";
+        const bufferGeometryType = "esriGeometryPolygon";
+
+        const graphicsLayer = new GraphicsLayer();
+
+        // Override in Mendix End -----------------------------------------------------------------------------------------
+        const markerSymbol = {
+          type: "simple-marker",
+          style: "path", // Use custom SVG path
+          color: [211, 0, 0], // Red color for the pin
+          outline: {
+            color: [211, 0, 0], // White outline
+            width: 2,
+          },
+          size: 24,
+          path: "M12 2C8.1 2 5 5.1 5 9c0 5.2 7 13 7 13s7-7.8 7-13c0-3.9-3.1-7-7-7zm0 9.5c-1.4 0-2.5-1.1-2.5-2.5S10.6 6.5 12 6.5s2.5 1.1 2.5 2.5S13.4 11.5 12 11.5z",
+          yoffset: 12,
+        };
+
+
+        const vectorTileLayer = new VectorTileLayer({
+          url: basemapTile,
+        });
+
+        const map = new Map({
+          basemap: {
+            baseLayers: [vectorTileLayer],
+          },
+        });
+
+        const view = new MapView({
+          container: "viewDiv",
+          map: map,
+          center: mapHome,
+          zoom: homeZoom,
+          ui: {
+            components: [],
+          },
+        });
+
+        const searchWidget = new Search({
+          view: view,
+        });
+
+        const locateBtn = new Locate({
+          view: view,
+        });
+
+        const homeButton = new Home({
+          view: view,
+          viewpoint: view.viewpoint,
+        });
+
+        const zoomWidget = new Zoom({
+          view: view,
+        });
+
+        view.when(() => {
+          locateBtn.locate();
+
+          // change esri buttons style:
+          setTimeout(() => {
+            const esriButtons = window.document.querySelectorAll(
+              "calcite-button.esri-widget--button"
+            );
+            esriButtons.forEach((button) => {
+              const shadowRoot = button.shadowRoot;
+
+              if (shadowRoot) {
+                const innerButton = shadowRoot.querySelector("button");
+
+                if (innerButton) {
+                  innerButton.style.width = "70px";
+                  innerButton.style.outline = "none";
+                  console.log("Button style updated:", innerButton);
+                }
+              }
+            });
+          }, 500);
+        });
+
+        locateBtn.on("locate", function (event) {
+          graphicsLayer.removeAll();
+
+          const point = {
+            type: "point",
+            longitude: event.position.coords.longitude,
+            latitude: event.position.coords.latitude,
+          };
+
+          projection.load().then(() => {
+            const spatialRefWGS84 = new SpatialReference({ wkid: 4326 });
+
+            const pointWGS84 = new Point({
+              longitude: point.longitude,
+              latitude: point.latitude,
+              spatialReference: spatialRefWGS84,
+            });
+
+            const pointGraphic = new Graphic({
+              geometry: pointWGS84,
+              symbol: markerSymbol,
+            });
+
+            graphicsLayer.add(pointGraphic);
+
+            const bufferGeometry = geometryEngine.geodesicBuffer(
+              pointWGS84,
+              bufferValue,
+              bufferUnit
+            );
+
+
+            // Set reporting data
+           // reportingJSON.webMercator = pointWGS84.toJSON();
+            // Convert geometries
+            const pointJson = pointWGS84.toJSON();
+            const bufferJson = bufferGeometry.toJSON();
+
+            let rings = bufferJson.rings;
+
+            // Check first ring length
+            if (rings[0].length > 10) {
+              rings = [rings[0].slice(0, 10)];
+            }
+
+            reportingJSON = {
+              reportingJSON: JSON.stringify({
+                geometryJson: {
+                  spatialReference: { wkid: 4326 },
+                  rings: rings
+                },
+                geometryType: "esriGeometryPolygon",
+                spatialRelationship: "esriSpatialRelIntersects",
+                returnGeometry: false,
+                imageDisplay: [1280, 325, 96], // adjust if needed
+                tolerance: 10,
+                mapExtent: {
+                  spatialReference: { wkid: 102100 },
+                  xmin: view.extent.xmin,
+                  ymin: view.extent.ymin,
+                  xmax: view.extent.xmax,
+                  ymax: view.extent.ymax
+                }
+              }),
+            
+              GISobject: "",
+              Latitude: pointJson.y.toString(),
+              Longitude: pointJson.x.toString()
+             
+            };
+
+            //console.log("reportingJSON", JSON.stringify(reportingJSON));
+            console.log("reportingJSON111111", JSON.stringify(reportingJSON()));
+            //sendLocationToAPI(reportingJSON);
+          });
+        });
+
+
+        // Create GeoData Object
+        const geoData = {};
+        geoData.geometryType = pointGeometryType;
+        geoData.spatialRelationship = pointSpatialRelationship;
+        geoData.tolerance = pointTolerance;
+        geoData.returnGeometry = pointReturnGeometry;
+
+        // Indicator on map START
+        view.on("click", (event) => {
+          graphicsLayer.removeAll();
+
+          const point = {
+            type: "point",
+            longitude: event.mapPoint.longitude,
+            latitude: event.mapPoint.latitude,
+          };
+
+          projection.load().then(() => {
+            const spatialRefWGS84 = new SpatialReference({ wkid: 4326 });
+
+            const pointWGS84 = projection.project(
+              event.mapPoint,
+              spatialRefWGS84
+            );
+
+            const pointGraphic = new Graphic({
+              geometry: point,
+              symbol: markerSymbol,
+            });
+
+            graphicsLayer.add(pointGraphic);
+
+            const geometry = pointWGS84;
+            const extent = view.extent;
+
+            geoData.imageDisplay = [view.width, view.height, viewDPI];
+
+            const bufferGeometry = geometryEngine.geodesicBuffer(
+              geometry,
+              bufferValue,
+              bufferUnit
+            );
+
+            let bufferGeo = bufferGeometry.toJSON();
+
+            //reportingJSON.webMercator = event.mapPoint.toJSON();
+             reportingJSON.webMercator = pointWGS84.toJSON();
+
+
+            console.log("reportingJSON22222", JSON.stringify(reportingJSON, null, 2));
+            
+           
+
+		//sendLocationToAPI(reportingJSON);
+            
+          });
+        });
+
+
+        // Add Widgets
+        view.ui.add(locateBtn, "top-left");
+        view.ui.add(homeButton, "top-left");
+        view.ui.add(zoomWidget, "top-left");
+
+        view.ui.add(searchWidget, "top-right");
+        map.add(graphicsLayer);
+
+      });
+      
+      const confirmBtn = document.getElementById('confirmLocationBtn');
+  const confirmDialog = document.getElementById('confirmDialog');
+  const yesBtn = document.getElementById('yesBtn');
+  const noBtn = document.getElementById('noBtn');
+
+  // Show dialog on button click
+  confirmBtn.addEventListener('click', () => {
+    confirmDialog.style.display = 'flex';
+  });
+
+  // Hide dialog on No
+  noBtn.addEventListener('click', () => {
+    confirmDialog.style.display = 'none';
+  });
+
+  // Call API on Yes
+  yesBtn.addEventListener('click', () => {
+    confirmDialog.style.display = 'none';
+    if (typeof reportingJSON !== 'undefined') {
+      sendLocationToAPI(reportingJSON);
+    } else {
+      console.log("No location found to send!");
+      alert("No location selected yet.");
+    }
+  });
+      
+    </script>
+    
+ 
+    
+
+
+
+<script>
+
+
+
+
+
+  const clientpbList = [
+  {
+   "channel": "WHATSAPP",
+   "pageId": "1077715925430892",//////RGA WHATSAPP Account
+   "leapaiUrl": "https://rga.leapai.cloud/bot/redbot/crm"
+  },
+  {
+   "channel": "KITE_CHAT",
+   "pageId": "5c078660-2e65-48c5-9cd8-7b188422b940",//////RGA WEBCHAT Account
+   "leapaiUrl": "https://rga.leapai.cloud/bot/redbot/crm"
+  },
+  {
+   "channel": "WHATSAPP",
+   "pageId": null, ///PAUSE Account
+   "leapaiUrl": "https://pauuse.leapai.cloud/bot/redbot/crm"
+  }
+  ];
+
+let redirectNumber = "";
+
+async function sendLocationToAPI(reportingJSON) {
+ 
+  console.log("reportingJSON33333", JSON.stringify(reportingJSON, null, 2));
+  try {
+    const lat = reportingJSON.webMercator.y;
+    const long = reportingJSON.webMercator.x;
+    
+    const urlParams = new URLSearchParams(window.location.search);
+    const Id= urlParams.get("Id");
+  const pageId = urlParams.get("pageId");
+  const conversationId = urlParams.get("conversationId");
+  const language= urlParams.get("lang");
+  let requestEndpoint = clientpbList.find(x => x.pageId === pageId || x.pageId == null);
+  
+ 
+
+  console.log("Id:", Id);
+  console.log("pageId:", pageId);
+  console.log("conversationId:", conversationId);
+  
+  console.log("sendLocationToAPI:", JSON.stringify({lat: lat,long: long}));
+    
+  const reqBody = JSON.stringify({
+    channel: requestEndpoint.channel || "WHATSAPP",
+    sender: {
+      id: Id,
+      pageId: pageId,
+      type: "inbox",
+      conversation_id: conversationId
+    },
+    message: {
+      type: "text",
+     // content: JSON.stringify({lat: lat,long: long}),
+     content: JSON.stringify(reportingJSON),
+      channel: requestEndpoint.channel || "WHATSAPP"
+    }
+  });
+      
+       console.log("reqBody:", reqBody);
+
+    const response = await fetch(requestEndpoint.leapaiUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: reqBody
+    });
+
+    //const data = await response.json();
+    console.log("response::  ",JSON.stringify(response))
+    showSuccess(Id);
+   
+  
+   
+   
+
+  } catch (error) {
+    console.log("API Error:", error);
+    alert("Failed to send location. Please try again.");
+  }
+}
+
+async function showSuccess(phone) {
+  redirectNumber = phone;
+  document.getElementById("successBox").style.display = "flex";
+  
+}
+
+async function goToWhatsApp() {
+  //window.location.href = `https://wa.me/${redirectNumber}`;
+  document.getElementById('confirmLocationBtn').style.display = 'none';
+  document.getElementById("successBox").style.display = 'none';
+ 
+  //window.close();
+}
+</script>
+
+ <!--  <div id="debugLog"
+     style="position:fixed; bottom:0; left:0; width:100%; max-height:100px; overflow:auto; background:#000; color:#0f0; font-size:14px; padding:10px; z-index:999999; opacity:0.8;">
+  <b>Debug Log:</b><br>
+</div>
+
+<script>
+(function() { 
+  const oldLog = console.log;
+  console.log = function(...args) {
+    oldLog.apply(console, args);
+    const logDiv = document.getElementById('debugLog');
+    logDiv.innerHTML += args.join(" ") + "<br>";
+  };
+})();
+</script> -->
+
+
+  </body>
+</html>
